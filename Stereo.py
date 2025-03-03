@@ -1,11 +1,18 @@
 import numpy as np
 import cv2
 
-ImT1_L = cv2.imread('/Volumes/Files/dataset/sequences/00/image_0/000000.png', 0)  # 0 flag returns a grayscale image
+
+""" ImT1_L = cv2.imread('/Volumes/Files/dataset/sequences/00/image_0/000000.png', 0)  # 0 flag returns a grayscale image
 ImT1_R = cv2.imread('/Volumes/Files/dataset/sequences/00/image_1/000000.png', 0)
 
 ImT2_L = cv2.imread('/Volumes/Files/dataset/sequences/00/image_0/000001.png', 0)
-ImT2_R = cv2.imread('/Volumes/Files/dataset/sequences/00/image_1/000001.png', 0)
+ImT2_R = cv2.imread('/Volumes/Files/dataset/sequences/00/image_1/000001.png', 0) """
+
+ImT1_L = cv2.imread('/storage/home/gdg5149/ Capstone/Stereo-visual-odometry/2011_09_26/2011_09_26_drive_0001_sync/image_00/data/0000000000.png', 0)  # 0 flag returns a grayscale image
+ImT1_R = cv2.imread('/storage/home/gdg5149/ Capstone/Stereo-visual-odometry/2011_09_26/2011_09_26_drive_0001_sync/image_01/data/0000000000.png', 0)
+
+ImT2_L = cv2.imread('/storage/home/gdg5149/ Capstone/Stereo-visual-odometry/2011_09_26/2011_09_26_drive_0001_sync/image_00/data/0000000001.png', 0)
+ImT2_R = cv2.imread('/storage/home/gdg5149/ Capstone/Stereo-visual-odometry/2011_09_26/2011_09_26_drive_0001_sync/image_01/data/0000000001.png', 0)
 
 # cv2.imshow('ImT1_L', ImT1_L)
 # cv2.waitKey(0)
@@ -24,6 +31,8 @@ ImT1_disparityA = np.divide(ImT1_disparity, 16.0)
 
 ImT2_disparity = disparityEngine.compute(ImT2_L, ImT2_R).astype(np.float32)
 ImT2_disparityA = np.divide(ImT2_disparity, 16.0)
+
+
 TILE_H = 10
 TILE_W = 20
 fastFeatureEngine = cv2.FastFeatureDetector_create()
