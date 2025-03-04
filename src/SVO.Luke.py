@@ -30,11 +30,11 @@ if __name__ == "__main__":
     print('SIFT:', useSIFT, 'ransac:', useRansac, 'showTrajectory:', showLiveTrajectory)
 
     # Set the base data path
-    datapath = os.path.join("/storage/home/gdg5149/ Capstone", "Stereo-visual-odometry", "2011_09_26", "2011_09_26_drive_0001_sync")
+    datapath = os.path.join("/home/gdg5149/Documents", "Cgarg-EDIT", "2011_09_26", "2011_09_26_drive_0001_sync")
 
     # Fix calibration file path
-    calibFileName = os.path.join("/storage/home/gdg5149/ Capstone", "Stereo-visual-odometry", "2011_09_26", "calib.txt")
-
+    calibFileName = os.path.join("/home/gdg5149/Documents", "Cgarg-EDIT", "2011_09_26", "calib.txt")
+    
 
     # Ensure the calibration file exists before opening
     if not os.path.exists(calibFileName):
