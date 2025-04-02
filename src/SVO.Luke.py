@@ -10,6 +10,7 @@ from utils import saveDebugImg
 
 
 
+
 if __name__ == "__main__":
 
     sequence = int(sys.argv[1])
@@ -30,10 +31,10 @@ if __name__ == "__main__":
     print('SIFT:', useSIFT, 'ransac:', useRansac, 'showTrajectory:', showLiveTrajectory)
 
     # Set the base data path
-    datapath = os.path.join("/home/gdg5149/Documents", "Cgarg-EDIT", "2011_09_26", "2011_09_26_drive_0001_sync")
+    datapath = os.path.join("/home/gdg5149/Documents", "Cgarg-EDIT", "2011_09_26", "dataset", "sequences", "00")
 
     # Fix calibration file path
-    calibFileName = os.path.join("/home/gdg5149/Documents", "Cgarg-EDIT", "2011_09_26", "calib.txt")
+    calibFileName = os.path.join("/home/gdg5149/Documents", "Cgarg-EDIT", "2011_09_26", "dataset", "sequences", "00", "calib.txt")
     
 
     # Ensure the calibration file exists before opening
@@ -57,8 +58,8 @@ if __name__ == "__main__":
             Proj2[row, column] = float(P2Vals[row * 4 + column + 1])
 
     # Set paths to images (now pointing inside "data" folders)
-    leftImagePath = os.path.join(datapath, "image_00", "data")
-    rightImagePath = os.path.join(datapath, "image_01", "data")
+    leftImagePath = os.path.join(datapath, "image_0")
+    rightImagePath = os.path.join(datapath, "image_1")
 
     translation = None
     rotation = None
@@ -79,6 +80,20 @@ if __name__ == "__main__":
         with open(poseFile, 'r') as fpPoseFile:
             groundTruthTraj = fpPoseFile.readlines()
 
+# Function to compute percent error safely
+def percent_error(measured, true):
+    # return np.abs((measured - true) / true) * 100 if true != 0 else 0
+    return (measured - true) / true * 100 if true != 0 else 0
+
+# Initialize error log file
+with open("error_log.txt", "w") as error_file:
+    error_file.write("Frame Number, Error_X, Error_Y, Error_Resultant \n")  # Header
+
+
+#error list
+    error_arr = np.array([])
+    frame_arr = np.array([])
+
 
     canvasH = 1200
     canvasW = 1200
@@ -88,16 +103,16 @@ if __name__ == "__main__":
 
         # reuse T-1 data instead of reading again-again
         # same with feature computation - anything that can be reused
-        imgPath = os.path.join(leftImagePath, '{0:010d}.png'.format(frm-1))
+        imgPath = os.path.join(leftImagePath, '{0:06d}.png'.format(frm-1))
         ImT1_L = cv2.imread(imgPath, 0)    #0 flag returns a grayscale image
 
-        imgPath = os.path.join(rightImagePath, '{0:010d}.png'.format(frm-1))
+        imgPath = os.path.join(rightImagePath, '{0:06d}.png'.format(frm-1))
         ImT1_R = cv2.imread(imgPath, 0)
 
-        imgPath = os.path.join(leftImagePath, '{0:010d}.png'.format(frm))
+        imgPath = os.path.join(leftImagePath, '{0:06d}.png'.format(frm))
         ImT2_L = cv2.imread(imgPath, 0)
 
-        imgPath = os.path.join(rightImagePath, '{0:010d}.png'.format(frm))
+        imgPath = os.path.join(rightImagePath, '{0:06d}.png'.format(frm))
         ImT2_R = cv2.imread(imgPath, 0)
 
         block = 11
@@ -375,7 +390,7 @@ if __name__ == "__main__":
             cv2.putText(traj, text, (20,40), cv2.FONT_HERSHEY_PLAIN, 1, (255,255,255), 1, 8)
             cv2.circle(traj, (draw_x, draw_y), 1, (frm*255/(endFrame-startFrame),255-frm*255/(endFrame-startFrame),0), 1)
 
-            if showLiveTrajectory:
+            if showLiveTrajectory: 
                 cv2.imshow('Trajectory', traj)
                 cv2.waitKey(1)
 
@@ -384,46 +399,105 @@ if __name__ == "__main__":
 
         if frm % 10 == 0:
             print (frm)
+    
+
+
+
+
+        draw_resultant = np.sqrt(draw_x^2 + draw_y^2)
+        grnd_resultant = np.sqrt(grndX^2 + grndY^2)
+    
+        # Compute error
+        error_x = percent_error(draw_x, grndX)
+        error_y = percent_error(draw_y, grndY)
+        error_resultant = percent_error(draw_resultant, grnd_resultant)
+
+        
+
+        error_arr = np.append(error_arr, error_resultant)  # Use np.append()
+        frame_arr = np.append(frame_arr, frm)  # Use np.append()
+        
+
+
+        print("x error:", error_x, "y error:", error_y, "resultant error:", error_resultant)
+
+        # Store in file
+        #  with open("error_log.txt", "a") as error_file:
+        error_file.write(f"{frm:.1f}, {error_x:.4f}, {error_y:.4f}, {error_resultant:.4f}\n")
+
+
+
     cv2.imwrite('mapClique.png', traj)
     fpPoseOut.write(outtxt)
     fpPoseOut.close()
 
-    import numpy as np
+# Initialize the figure and axis
+# plt.ion()  # Turn on interactive mode
+fig, ax = plt.subplots()
+line, = ax.plot(frame_arr, error_arr, 'bo-')  # 'bo-' means blue circles with a line
 
-import numpy as np
+# Create the plot
+plt.figure(1)
+plt.plot(frame_arr, error_arr, label="Percent Error between Ground Truth and SVO Trajectory")
+plt.xlabel("Frames")
+plt.ylabel("Error (%)")
+plt.title("Percent Error between Ground Truth and SVO Trajectory")
+plt.legend()
 
-# Initialize the total percent error to 0
-total_percent_error = 0
+# Set y-axis limits from 0 to 10 percent
+plt.ylim(0, 10)
 
-# Loop through the frames
-for frm in range(min(startFrame + 1, len(translation)), min(endFrame + 1, len(translation))):
-    estimated_pos = translation[frm]
-    
-    print(f"Frame {frm}: Estimated position - {estimated_pos}")
-    
-    # Check if the estimated position is in the expected format (3D coordinates)
-    if len(estimated_pos) != 3:
-        print(f"Frame {frm}: Estimated position has an unexpected format: {estimated_pos}")
-        
-        # Handle the unexpected format by padding with default values (0 for y and z)
-        if len(estimated_pos) == 1:
-            estimated_pos = [estimated_pos[0], 0, 0]  # Assume y = 0 and z = 0 for missing coordinates
-        else:
-            continue  # Skip this frame if it can't be corrected
-        
-    # Ground truth position (adjust as necessary)
-    grndPose = groundTruthTraj[frm].strip().split()
-    ground_truth_pos = [float(grndPose[3]), float(grndPose[7]), float(grndPose[11])]
-    
-    # Compute percent error
-    percent_error = compute_percent_error(estimated_pos, ground_truth_pos)
-    
-    # Handle None percent error
-    if percent_error is not None:
-        total_percent_error += percent_error
-        print(f"Frame {frm}: Percent Error = {percent_error:.2f}%")
+# Save to a file (PNG format)
+plt.savefig("Errorplot.png", dpi=300, bbox_inches='tight')  # High resolution
 
-# Calculate average percent error
-num_frames = endFrame - startFrame  # Adjust this if your frame indices are different
-avg_percent_error = total_percent_error / num_frames if num_frames > 0 else 0
-print(f"Average Percent Error: {avg_percent_error:.2f}%")
+# Save as PDF
+plt.savefig("Errorplot.pdf")
+
+plt.show()
+
+
+def moving_average(data, window_size=5):
+    return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
+
+# Apply smoothing
+smoothed_error_arr = moving_average(error_arr, window_size=21)
+smoothed_frame_arr = frame_arr[:len(smoothed_error_arr)]  # Adjust x-axis to match
+
+# # Plot the smoothed curve
+# plt.figure()
+# plt.plot(smoothed_frame_arr, smoothed_error_arr, 'r-', label="Smoothed Error")
+# plt.plot(frame_arr, error_arr, 'bo-', alpha=0.3, label="Original Error")  # Original with transparency
+# plt.xlabel("Frames")
+# plt.ylabel("Error (%)")
+# plt.title("Smoothed Percent Error")
+# plt.legend()
+# plt.ylim(0, 10)  # Keep y-axis limit
+# plt.savefig("SmoothedErrorplot.png", dpi=300, bbox_inches='tight')
+# plt.show()
+
+# Filter out values where error is above 10%
+valid_indices = smoothed_error_arr <= 10  # Boolean mask
+
+# Apply mask to keep only valid values
+filtered_error_arr = smoothed_error_arr[valid_indices]
+filtered_frame_arr = smoothed_frame_arr[valid_indices]  # Keep frames aligned
+
+# Plot the filtered error
+plt.figure(2)
+plt.plot(filtered_frame_arr, filtered_error_arr, 'bo-', label="Filtered Percent Error")
+plt.xlabel("Frames")
+plt.ylabel("Error (%)")
+plt.title("Filtered Percent Error")
+plt.legend()
+plt.ylim(0, 10)  # Ensure y-axis stays fixed
+
+# Save the filtered plot
+plt.savefig("FilteredErrorplot.png", dpi=300, bbox_inches='tight')
+plt.savefig("FilteredErrorplot.pdf")
+
+plt.show()
+
+
+
+
+print("Error data has been logged in error_log.txt")
